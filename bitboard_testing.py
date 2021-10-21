@@ -7,9 +7,8 @@ class bitboard:
         self.symbol_0 = ' '
         self.symbol_1 = 'X'
         self.symbol_2 = 'O'
-        if column_counts == None:
-            self.column_counts = [0]*self.num_cols
-        else: self.column_counts = column_counts
+        self.column_counts = self.create_col_counts()
+
     def add_piece(self, player, col):
         add = 1 << (col * self.board_height + self.column_counts[col])
         if player == 1:
@@ -17,6 +16,7 @@ class bitboard:
         else:
             self.player_2 = self.player_2 | add
         self.column_counts[col] += 1
+
     def check_win(self, player):
         if player == 1:
             testboard = self.player_1
@@ -35,6 +35,7 @@ class bitboard:
             return True
         else:
             return False
+
     def print_board(self):
         boardlist = []
         for row in range(self.board_height - 1):
@@ -51,21 +52,21 @@ class bitboard:
         for i in range(len(boardlist)):
             boardlist[i] = ' | '.join(boardlist[i])
         return '| ' + ' |\n\n| '.join(boardlist) + ' |'
-    def player_list(self, player):
-        if player == 1:
-            board = self.player_1
-        else:
-            board = self.player_2
-        l = []
-        for i in range(self.num_cols * (self.board_height - 1)):
-            if board & 1<<i:
-                l.insert(i, 1)
-            else:
-                l.insert(i, 0)
-        return l
+
     def list_legal_moves(self):
         legal = [i for i in range(self.num_cols) if self.column_counts[i] < self.board_height - 1]
         return legal
+
+    def create_col_counts(self):
+        board = self.player_1 | self.player_2
+        col_counts = []
+        for i in range(self.num_cols):
+            h = self.board_height - 1
+            while h != 0 and ((1<<(i*self.board_height + h - 1)) & board) == 0:
+                h -= 1
+            col_counts.insert(i, h)
+        return col_counts
+            
 
 def get_input(board):
     col = int(input("What column? "))
