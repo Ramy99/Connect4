@@ -1,3 +1,5 @@
+import unittest
+
 class bitboard:
     def __init__(self, board_one = 0, board_two = 0, num_cols = 7, board_height = 7, column_counts = None):
         self.player_1 = board_one
@@ -66,7 +68,29 @@ class bitboard:
                 h -= 1
             col_counts.insert(i, h)
         return col_counts
-            
+
+class bitboardTest(unittest.TestCase):
+    def setUp(self):
+        self.board = bitboard()
+    def test_wins(self):
+        vertical_wins = []
+        for col in range(self.board.num_cols):
+            for h in range(self.board.board_height - 4):
+                vertical_wins.append(0b1111 << (col * self.board.board_height + h))
+        horizontal_wins = []
+        for col in range(self.board.num_cols - 3):
+            for h in range(self.board.board_height - 1):
+                horizontal_wins.append(0b1000000100000010000001 << (col * self.board.board_height + h))
+        diagonal_wins = []
+        for col in range(self.board.num_cols - 3):
+            for h in range(self.board.board_height - 4):
+                diagonal_wins.append(0b1000000010000000100000001 << (col * self.board.board_height + h))
+                diagonal_wins.append(0b1000001000001000001000 << (col * self.board.board_height + h))
+        wins = vertical_wins + horizontal_wins + diagonal_wins
+        for b in wins:
+            self.board.player_1 = b
+            self.assertTrue(self.board.check_win(1))
+    
 
 def get_input(board):
     col = int(input("What column? "))
