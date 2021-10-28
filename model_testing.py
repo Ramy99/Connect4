@@ -45,7 +45,7 @@ class agent:
         self.target_model.set_weights(self.play_model.get_weights())
 
     def choose_action(self, state):
-        return tf.argmax(self.play_model(state.reshape(1, 2, 7, 7))[0])
+        return tf.argmax(self.play_model(state.reshape(1, 2, 7, 7))[0]).numpy()
 
 class memory:
     def __init__(self):
@@ -69,6 +69,7 @@ epsilon_step = .955
 for i in range(training_games):
     env.reset()
     state = env.state()
+    player_mem.reset()
     epsilon *= epsilon_step
     while not env.done:
         if env.current_player() == 1:
@@ -87,6 +88,8 @@ for i in range(training_games):
             env.make_move(action)
             if env.win:
                 player_mem.rewards[-1] = -20
-    player_1.train_player(player_mem.states, player_mem.actions, player_mem.rewards)
+        state = env.state()
+    player_1.train_player(np.array(player_mem.states), np.array(player_mem.actions), np.array(player_mem.rewards))
     if (i + 1) % 5 == 0:
         player_1.update_target()
+    print(state)
