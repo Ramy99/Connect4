@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.core.fromnumeric import size
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -11,7 +12,7 @@ def build_model():
             layers.Flatten(),
             layers.Dense(128, activation = 'relu'),
             layers.Dense(64, activation = 'relu'),
-            layers.Dense(7, activation = 'softmax')
+            layers.Dense(7, activation = 'linear')
         ]
     )
     return model
@@ -30,13 +31,13 @@ class agent:
         self.optimizer = opt
         self.gamma = gamma
 
-    def train_player(self, states, actions, rewards):
-        updated_q_values = rewards + self.gamma * tf.reduce_max(self.target_model(states), axis = 1)
+    def train_player(self, states, actions, rewards, next_states):
+        updated_q_values = rewards + self.gamma * tf.reduce_max(self.target_model(next_states), axis = 1)
         action_masks = tf.one_hot(actions, 7)
         with tf.GradientTape() as tape:
-            probs = self.play_model(states)
-            prob_action_taken = tf.multiply(probs, action_masks)
-            q_action = tf.reduce_sum(prob_action_taken, axis=1)
+            q_vals = self.play_model(states)
+            q_actions = tf.multiply(q_vals, action_masks)
+            q_action = tf.reduce_sum(q_actions, axis=1)
             loss = self.loss_function(updated_q_values, q_action)
         grads = tape.gradient(loss, self.play_model.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.play_model.trainable_variables))
@@ -47,20 +48,40 @@ class agent:
     def choose_action(self, state):
         return tf.argmax(self.play_model(state.reshape(1, 2, 7, 7))[0]).numpy()
 
-class memory:
-    def __init__(self):
+class buffer:
+    def __init__(self, size = 1000):
+        self.size = size
         self.reset()
     def reset(self):
         self.states = []
         self.actions = []
         self.rewards = []
-    def step(self, state, action, reward):
+        self.next_states = []
+    def step(self, state, action, reward, next_state):
         self.states.append(state)
         self.actions.append(action)
         self.rewards.append(reward)
+        self.next_states.append(next_state)
+        if len(self.states) > self.size:
+            self.states = self.states[1:]
+            self.actions = self.actions[1:]
+            self.rewards = self.rewards[1:]
+    def sample(self, batch_size = 8):
+        indices = np.random.choice(len(self.rewards), size = batch_size, replace = False)
+        sample_states = []
+        sample_actions = []
+        sample_rewards = []
+        sample_next_states = []
+        for i in indices:
+            sample_states.append(self.states[i])
+            sample_actions.append(self.actions[i])
+            sample_rewards.append(self.actions[i])
+            sample_next_states.append(self.next_states[i])
+        return sample_states, sample_actions, sample_rewards, sample_next_states
+
 
 player_1 = agent()
-player_mem = memory()
+play_buffer = buffer()
 env = bb.np_bitboard()
 training_games = 100
 epsilon = 1
@@ -68,6 +89,7 @@ epsilon_step = .955
 
 for i in range(training_games):
     env.reset()
+<<<<<<< HEAD
     state = env.state()
     player_mem.reset()
     epsilon *= epsilon_step
@@ -93,3 +115,8 @@ for i in range(training_games):
     if (i + 1) % 5 == 0:
         player_1.update_target()
     print(state)
+=======
+    while not env.done:
+        state = env.state()
+        
+>>>>>>> 293bf1cb3aac3472bec904095985bf7c68a0141a
