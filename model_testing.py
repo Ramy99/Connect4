@@ -78,12 +78,12 @@ class buffer:
 player_1 = agent()
 play_buffer = buffer()
 env = bb.np_bitboard()
-training_games = 100
+training_games = 5000
 epsilon = 1
-epsilon_step = .955
+epsilon_step = .999
 turns = 0
 train_after_turns = 50
-update_target_after = 100
+update_target_after = 200
 training_batch_size = 32
 
 for i in range(training_games):
@@ -106,7 +106,7 @@ for i in range(training_games):
             next_state = env.state()
             play_buffer.save(state, action, reward, next_state)
             turns += 1
-        if env.current_player() == 2:
+        elif env.current_player() == 2:
             action = np.random.choice(env.legal_moves())
             env.make_move(action)
         if turns % train_after_turns == 0:

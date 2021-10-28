@@ -61,3 +61,19 @@ class np_bitboard():
         return self.turn % 2 + 1
     def reset(self):
         self.__init__()
+    def print_board(self):
+        boardlist = []
+        for row in range(self.rows):
+            row_list = []
+            for c in range(self.cols):
+                square = np.uint64(1 << (c * self.board_height + row))
+                if self.board_1 & square:
+                    row_list.append('X')
+                elif self.board_2 & square:
+                    row_list.append('O')
+                else:
+                    row_list.append(' ')
+            boardlist.insert(0, row_list)
+        for i in range(len(boardlist)):
+            boardlist[i] = ' | '.join(boardlist[i])
+        return '| ' + ' |\n\n| '.join(boardlist) + ' |'
