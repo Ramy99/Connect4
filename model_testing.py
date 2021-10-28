@@ -57,7 +57,7 @@ class buffer:
         self.actions = []
         self.rewards = []
         self.next_states = []
-    def step(self, state, action, reward, next_state):
+    def save(self, state, action, reward, next_state):
         self.states.append(state)
         self.actions.append(action)
         self.rewards.append(reward)
@@ -68,15 +68,10 @@ class buffer:
             self.rewards = self.rewards[1:]
     def sample(self, batch_size = 8):
         indices = np.random.choice(len(self.rewards), size = batch_size, replace = False)
-        sample_states = []
-        sample_actions = []
-        sample_rewards = []
-        sample_next_states = []
-        for i in indices:
-            sample_states.append(self.states[i])
-            sample_actions.append(self.actions[i])
-            sample_rewards.append(self.actions[i])
-            sample_next_states.append(self.next_states[i])
+        sample_states = np.array([self.states[i] for i in indices])
+        sample_actions = [self.actions[i] for i in indices]
+        sample_rewards = [self.rewards[i] for i in indices]
+        sample_next_states = np.array([self.next_states[i] for i in indices])
         return sample_states, sample_actions, sample_rewards, sample_next_states
 
 
@@ -86,37 +81,39 @@ env = bb.np_bitboard()
 training_games = 100
 epsilon = 1
 epsilon_step = .955
+turns = 0
+train_after_turns = 50
+update_target_after = 100
+training_batch_size = 32
 
 for i in range(training_games):
     env.reset()
-<<<<<<< HEAD
-    state = env.state()
-    player_mem.reset()
-    epsilon *= epsilon_step
+    print("New Game")
     while not env.done:
+        state = env.state()
         if env.current_player() == 1:
-            if epsilon < np.random.rand(1)[0]:
-                action = player_1.choose_action(state)
-            else:
+            if epsilon > np.random.rand(1)[0]:
                 action = np.random.choice(env.legal_moves())
+            else:
+                values = player_1.play_model(state.reshape(1,2,7,7))
+                action = tf.argmax(values[0]).numpy()
+            epsilon *= epsilon_step
             env.make_move(action)
             if env.win:
                 reward = 20
             else:
                 reward = 0
-            player_mem.step(state, action, reward)
-        else:
+            next_state = env.state()
+            play_buffer.save(state, action, reward, next_state)
+            turns += 1
+        if env.current_player() == 2:
             action = np.random.choice(env.legal_moves())
             env.make_move(action)
-            if env.win:
-                player_mem.rewards[-1] = -20
-        state = env.state()
-    player_1.train_player(np.array(player_mem.states), np.array(player_mem.actions), np.array(player_mem.rewards))
-    if (i + 1) % 5 == 0:
-        player_1.update_target()
-    print(state)
-=======
-    while not env.done:
-        state = env.state()
-        
->>>>>>> 293bf1cb3aac3472bec904095985bf7c68a0141a
+        if turns % train_after_turns == 0:
+            print("Training")
+            training_states, training_actions, training_rewards, training_next_states = play_buffer.sample(batch_size=training_batch_size)
+            player_1.train_player(training_states, training_actions, training_rewards, training_next_states)
+        if turns % update_target_after == 0:
+            print("Updating target model")
+            player_1.update_target()
+player_1.play_model.save('Trained_model')
