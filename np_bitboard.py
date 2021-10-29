@@ -13,6 +13,7 @@ class np_bitboard():
         self.turn = 0
         self.done = False
         self.win = False
+        self.winner = False
     def add_piece(self, player, col):
         add = np.uint64(1 << (col * self.board_height + self.col_counts[col]))
         if player == 1:
@@ -54,6 +55,7 @@ class np_bitboard():
             if self.check_win(self.current_player()):
                 self.done = True
                 self.win = True
+                self.winner = self.current_player()
             elif self.legal_moves() == []:
                 self.done = True
         self.turn += 1

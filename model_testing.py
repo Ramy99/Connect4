@@ -10,7 +10,7 @@ def build_model():
         [
             layers.Input(shape=(2,7,7)),
             layers.Flatten(),
-            layers.Dense(128, activation = 'relu'),
+            layers.Dense(64, activation = 'relu'),
             layers.Dense(64, activation = 'relu'),
             layers.Dense(7, activation = 'linear')
         ]
@@ -18,7 +18,7 @@ def build_model():
     return model
 
 class agent:
-    def __init__(self, build_func = build_model, play_model = None, target_model = None, loss_func = keras.losses.Huber(), opt = keras.optimizers.Adam(), gamma = .75):
+    def __init__(self, build_func = build_model, play_model = None, target_model = None, loss_func = keras.losses.Huber(), opt = keras.optimizers.Adam(), gamma = .99):
         if play_model != None:
             self.play_model = play_model
         else:
@@ -66,6 +66,7 @@ class buffer:
             self.states = self.states[1:]
             self.actions = self.actions[1:]
             self.rewards = self.rewards[1:]
+            self.next_states = self.next_states[1:]
     def sample(self, batch_size = 8):
         indices = np.random.choice(len(self.rewards), size = batch_size, replace = False)
         sample_states = np.array([self.states[i] for i in indices])
@@ -78,26 +79,27 @@ class buffer:
 player_1 = agent()
 play_buffer = buffer()
 env = bb.np_bitboard()
-training_games = 5000
+training_games = 500
 epsilon = 1
 epsilon_step = .999
+epsilon_min = .1
 turns = 0
 train_after_turns = 50
-update_target_after = 200
+update_target_after = 10
 training_batch_size = 32
+game_winners = [False, 0, 0]
 
 for i in range(training_games):
     env.reset()
-    print("New Game")
     while not env.done:
         state = env.state()
         if env.current_player() == 1:
             if epsilon > np.random.rand(1)[0]:
                 action = np.random.choice(env.legal_moves())
             else:
-                values = player_1.play_model(state.reshape(1,2,7,7))
-                action = tf.argmax(values[0]).numpy()
+                player_1.choose_action(state)
             epsilon *= epsilon_step
+            epsilon = max(epsilon, epsilon_min)
             env.make_move(action)
             if env.win:
                 reward = 20
@@ -109,11 +111,24 @@ for i in range(training_games):
         elif env.current_player() == 2:
             action = np.random.choice(env.legal_moves())
             env.make_move(action)
-        if turns % train_after_turns == 0:
-            print("Training")
-            training_states, training_actions, training_rewards, training_next_states = play_buffer.sample(batch_size=training_batch_size)
-            player_1.train_player(training_states, training_actions, training_rewards, training_next_states)
-        if turns % update_target_after == 0:
-            print("Updating target model")
-            player_1.update_target()
-player_1.play_model.save('Trained_model')
+            # if env.win:
+            #     play_buffer.rewards[-1] = -20
+        # if turns % train_after_turns == 0:
+        #     print("Training")
+        #     training_states, training_actions, training_rewards, training_next_states = play_buffer.sample(batch_size=training_batch_size)
+        #     player_1.train_player(training_states, training_actions, training_rewards, training_next_states)
+        # if turns % update_target_after == 0:
+        #     print("Updating target model")
+        #     player_1.update_target()
+    player_1.train_player(np.array(play_buffer.states), play_buffer.actions, play_buffer.rewards, np.array(play_buffer.next_states))
+    play_buffer.reset()
+    if (i+1)%4 == 0:
+        player_1.update_target()
+    if env.win:
+        print(f"Player {env.winner} won game {i+1}")
+        game_winners[env.winner] += 1
+    else:
+        print(f"Game {i+1} was a draw")
+print(f"Player 1 won {game_winners[1]} games")
+print(f"Player 2 won {game_winners[2]} games")
+#player_1.play_model.save('trained_model')
