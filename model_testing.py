@@ -10,9 +10,8 @@ def build_model():
         [
             layers.Input(shape=(2,7,7)),
             layers.Flatten(),
-            layers.Dense(64, activation = 'relu'),
-            layers.Dense(64, activation = 'relu'),
-            layers.Dense(7, activation = 'linear')
+            layers.Dense(64, activation = 'relu', kernel_initializer=keras.initializers.Zeros()),
+            layers.Dense(7, activation = 'linear', kernel_initializer=keras.initializers.Zeros())
         ]
     )
     return model
@@ -79,9 +78,9 @@ class buffer:
 player_1 = agent()
 play_buffer = buffer()
 env = bb.np_bitboard()
-training_games = 500
+training_games = 5000
 epsilon = 1
-epsilon_step = .999
+epsilon_step = .9999
 epsilon_min = .1
 turns = 0
 train_after_turns = 50
@@ -122,7 +121,7 @@ for i in range(training_games):
         #     player_1.update_target()
     player_1.train_player(np.array(play_buffer.states), play_buffer.actions, play_buffer.rewards, np.array(play_buffer.next_states))
     play_buffer.reset()
-    if (i+1)%4 == 0:
+    if (i+1)%50 == 0:
         player_1.update_target()
     if env.win:
         print(f"Player {env.winner} won game {i+1}")
