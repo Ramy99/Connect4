@@ -1,9 +1,89 @@
-#Will Shayne
-#CS21
-
+#Monte Carlo Tree Search Testing
 import numpy as np
-import time
 import bitboard as bb
+import time
+
+class node:
+    def __init__(self, state, active_player, parent = None, parent_move = None, time_limit = 25):
+        self.state = state
+        self.visits = 0
+        self.parent = parent
+        self.parent_move = parent_move
+        self.active_player = active_player
+        self.children = []
+        self.results = {1: 0, 0: 0, -1: 0}
+        self.moves = self.state.legal_moves()
+        self.terminal = self.state.end
+        self.time_limit = time_limit
+    
+    def expand(self):
+        action = self.moves.pop()
+        state_next = self.state.add_piece(self.active_player, action)
+        state_next.check_end()
+        if self.active_player == 1:
+            next_player = 2
+        else:
+            next_player = 1
+        child = node(state_next, next_player, parent=self, parent_move=action)
+        self.children.append(child)
+        return child
+    
+    def rollout(self):
+        rollout_state = self.state
+        rollout_player = self.active_player
+        rollout_moves = 0
+        while not rollout_state.end and rollout_moves < 4:
+            moves = rollout_state.legal_moves()
+            action = self.rollout_policy(moves)
+            rollout_state = rollout_state.add_piece(rollout_player, action)
+            rollout_state.check_end()
+            if rollout_player == 1:
+                rollout_player = 2
+            else:
+                rollout_player = 1
+            rollout_moves += 1
+        if rollout_state.winner == None:
+            return 0
+        elif rollout_state.winner == 1:
+            return 1
+        else:
+            return -1
+    
+    def rollout_policy(self, moves):
+        return np.random.choice(moves)
+    
+    def backpropogate(self, result):
+        self.visits += 1
+        self.results[result] += 1
+        if self.parent != None:
+            self.parent.backpropogate(result)
+    
+    def check_expanded(self):
+        if len(self.moves) == 0:
+            return True
+        else:
+            return False
+    
+    def best_child(self, param=.1):
+        weights = [(c.results[1]-c.results[-1]) / c.visits + param * (np.log(self.visits)/c.visits)**.5 for c in self.children]
+        return self.children[np.argmax(weights)]
+
+    def tree_policy(self):
+        current_node = self
+        while not current_node.terminal:
+            if not current_node.check_expanded():
+                return current_node.expand()
+            else:
+                current_node = current_node.best_child()
+        return current_node
+    
+    def best_action(self):
+        initial_time = time.time()
+        while time.time() - initial_time < self.time_limit:
+            v = self.tree_policy()
+            w = v.rollout()
+            v.backpropogate(w)
+        return self.best_child(param = 0)
 
 #Basic monte carlo tree search implementation
 class mcts:
@@ -94,20 +174,36 @@ class mcts:
         start = time.time()
         #find a leaf, run a simulation, then propogate the result back up the tree, repeat until out of time
         while time.time() - start < self.TIME_LIMIT:
-            leaf = self.find_leaf()
-            winner = leaf.simulate()
-            leaf.update_counts(winner)
+            n = self.find_leaf()
+            r = n.simulate()
+            n.update_counts(r)
         #choose the best child without exploration, and return its action
         return self.select_child(exp_param=0).action
+        
 
-#testing function for games vs the ai
+def mcts_test():
+    board = bb.bitboard()
+    root = mcts(board, 1, 2)
+    current = root
+    while not board.end:
+        print(board.print_board())
+        col = current.choose_move()
+        current = current.children[col]
+        board = board.add_piece(1, col)
+        board.check_end()
+        print(board.print_board())
+        col = int(input("What column? "))
+        board = board.add_piece(2, col)
+        board.check_end()
+        current = current.children[col]
+
 def main():
     board = bb.bitboard()
     player = 1
     while not board.end:
         print(board.print_board())
         if player == 1:
-            root = mcts(board, 1, 2)
+            root = node(board, player)
             col = root.best_action().parent_move
         else:
             col = int(input("What column? "))
@@ -117,6 +213,3 @@ def main():
             player = 2
         else:
             player = 1
-
-if __name__ == "__main__":
-    main()

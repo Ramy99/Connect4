@@ -36,8 +36,9 @@ class np_bitboard():
     def state(self):
         comp = np.ones(self.board_height * self.cols, dtype = np.uint64) << np.arange(self.board_height * self.cols, dtype = np.uint64)
         board_array = np.array([comp & self.board_1, comp & self.board_2], dtype = bool)
-        board_array = board_array.reshape(2, 7, 7).view(np.uint8)
-        return board_array
+        board_array = board_array.reshape(2, 7, 7).view(np.int8)
+        r = board_array[0] - board_array[1]
+        return r
     def count_cols(self):
         board = self.board_1 | self.board_2
         counts = []
