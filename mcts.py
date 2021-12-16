@@ -54,6 +54,10 @@ class mcts:
             action = np.random.choice(simulation_state.legal_moves())
             simulation_state = simulation_state.add_piece(simulation_player, action)
             simulation_state.check_end()
+            if simulation_player == 1:
+                simulation_player = 2
+            else:
+                simulation_player = 1
         #return the winner, 0 if draw, 1 if player 1 wins, 2 if player 2 wins
         return simulation_state.winner
     
